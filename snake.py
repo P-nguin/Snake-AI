@@ -1,5 +1,6 @@
 import pygame
 import random
+import numpy as np
 from enum import Enum
 
 pygame.init()
@@ -25,7 +26,7 @@ class Snake:
         # init direction
         self.direction = dir
 
-         # init pos and length
+        # init pos and length
         self.head = (posX, posY)
         self.body = [self.head,
                       (self.head[0] - BLOCK_SIZE, self.head[1] - BLOCK_SIZE),
@@ -70,11 +71,15 @@ class SnakeGame:
         pygame.display.set_caption("Snake")
         self.clock = pygame.time.Clock()
 
+        self.init()
+
+    def init(self):
         # init snake
         self.snake = Snake(Direction.RIGHT, self.width/2, self.height/2)
 
         # init game state
         self.score = 0
+        self.idleCnt = 0
         self.food = None
         self.placeFood()
     
@@ -85,31 +90,36 @@ class SnakeGame:
         if self.food in self.snake.body:
             self.placeFood()
     
-    def game_step(self):
+    def game_step(self, action):
+        self.idleCnt += 1
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.snake.setDir(Direction.LEFT)
-                elif event.key == pygame.K_RIGHT:
-                    self.snake.setDir(Direction.RIGHT)
-                elif event.key == pygame.K_UP:
-                    self.snake.setDir(Direction.UP)
-                elif event.key == pygame.K_DOWN:
-                    self.snake.setDir(Direction.DOWN)
         
+        dirs = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
+        idx = dirs[self.snake.getDir()]
+        if np.array_equal(action, [0, 1, 0]):
+            self.snake.setDir(dirs[(idx + 1) % 4])
+        elif np.array_equal(action, [0, 0, 1]):
+            self.snake.setDir(dirs[(idx - 1) % 4])
+
+        self.snake.setDir(action)
         self.snake.move()
         self.snake.getBody().insert(0, self.snake.getHead())
         
+        reward = 0
         gameOver = False
-        if self.isCollision():
+        if self.isCollision() or self.idleCnt > len(self.snake.getBody())*100:
             gameOver = True
-            return gameOver, self.score
+            reward = -10
+            return gameOver, reward, self.score
         
         if self.snake.getHead() == self.food:
             self.score += 1
+            reward = 10
+            self.idleCnt -= 10
             self.placeFood()
         else:
             self.snake.getBody().pop()
@@ -127,11 +137,13 @@ class SnakeGame:
         return gameOver, self.score
         
     
-    def isCollision(self):
-        if self.snake.getHead()[0] < 0 or self.snake.getHead()[0] > self.width - BLOCK_SIZE or self.snake.getHead()[1] < 0 or self.snake.getHead()[1] > self.height - BLOCK_SIZE:
+    def isCollision(self, p=None):
+        if p == None:
+            p = self.snake.getHead()
+        if p[0] < 0 or p[0] > self.width - BLOCK_SIZE or p[1] < 0 or p[1] > self.height - BLOCK_SIZE:
             return True
         
-        if self.snake.getHead() in self.snake.getBody()[1:]:
+        if p in self.snake.getBody()[1:]:
             return True
         
         return False
