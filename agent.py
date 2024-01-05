@@ -6,8 +6,8 @@ from snake import SnakeGame, Direction
 from model import Linear_QNet, QTrainer
 from plotHelper import plot
 
-MAX_MEMORY = 500_000
-BATCH_SIZE = 5000
+MAX_MEMORY = 100_000
+BATCH_SIZE = 1000
 LR = 0.001
 
 class Agent:
@@ -65,7 +65,7 @@ class Agent:
         self.trainer.trainStep(state, action, reward, next_state, done)
 
     def getAction(self, state):
-        self.epsilon = 150 - self.number_games
+        self.epsilon = 200 - self.number_games
         final_move = [0,0,0]
         if random.randint(0, 200) < self.epsilon:
             move = random.randint(0, 2)

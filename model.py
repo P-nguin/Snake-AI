@@ -8,13 +8,11 @@ class Linear_QNet(nn.Module):
     def __init__(self, inputSize, hiddenSize, outputSize):
         super().__init__()
         self.linear1 = nn.Linear(inputSize, hiddenSize)
-        self.linear2 = nn.Linear(hiddenSize, hiddenSize)
-        self.linear3 = nn.Linear(hiddenSize, outputSize)
+        self.linear2 = nn.Linear(hiddenSize, outputSize)
 
     def forward(self, x):
         x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        x = self.linear3(x)
+        x = self.linear2(x)
         return x
     
     def save(self, fileName="model.pyh"):

@@ -19,7 +19,7 @@ BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
 
 BLOCK_SIZE = 20
-SPEED = 500
+SPEED = 10000
 
 class Snake:
     def __init__(self, dir, posX, posY):
@@ -110,7 +110,7 @@ class SnakeGame:
         
         reward = 0
         gameOver = False
-        if self.isCollision() or self.idleCnt > len(self.snake.getBody())*100:
+        if self.isCollision() or self.idleCnt > len(self.snake.getBody())*80:
             gameOver = True
             reward = -10
             return gameOver, reward, self.score
