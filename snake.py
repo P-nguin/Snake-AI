@@ -1,15 +1,15 @@
 import pygame
 import random
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 
 pygame.init()
 
-class Direction(Enum):
-    RIGHT = 1
+class Direction(IntEnum):
+    RIGHT = 0
+    DOWN = 1
     LEFT = 2
     UP = 3
-    DOWN = 4
 
 # rgb colors
 WHITE = (255, 255, 255)
@@ -18,8 +18,8 @@ BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
 
-BLOCK_SIZE = 10
-SPEED = 10
+BLOCK_SIZE = 20
+SPEED = 500
 
 class Snake:
     def __init__(self, dir, posX, posY):
@@ -99,13 +99,12 @@ class SnakeGame:
                 quit()
         
         dirs = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
-        idx = dirs[self.snake.getDir()]
+        idx = self.snake.getDir()
         if np.array_equal(action, [0, 1, 0]):
             self.snake.setDir(dirs[(idx + 1) % 4])
         elif np.array_equal(action, [0, 0, 1]):
             self.snake.setDir(dirs[(idx - 1) % 4])
 
-        self.snake.setDir(action)
         self.snake.move()
         self.snake.getBody().insert(0, self.snake.getHead())
         
@@ -134,7 +133,7 @@ class SnakeGame:
 
         self.clock.tick(SPEED)
 
-        return gameOver, self.score
+        return reward, gameOver, self.score
         
     
     def isCollision(self, p=None):
@@ -148,17 +147,5 @@ class SnakeGame:
         
         return False
     
-if __name__ == '__main__':
-    game = SnakeGame()
-    
-    # game loop
-    while True:
-        game_over, score = game.game_step()
-        
-        if game_over == True:
-            break
-        
-    print('Final Score', score)
-        
-        
-    pygame.quit()
+    def getBlockSize(self):
+        return BLOCK_SIZE

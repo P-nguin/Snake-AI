@@ -3,53 +3,46 @@ import random
 import numpy as np
 from collections import deque
 from snake import SnakeGame, Direction
+from model import Linear_QNet, QTrainer
+from plotHelper import plot
 
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
+MAX_MEMORY = 500_000
+BATCH_SIZE = 5000
 LR = 0.001
 
 class Agent:
     def __init__(self) -> None:
         self.number_games = 0
         self.epsilon = 0
-        self.gamma = 0
+        self.gamma = 0.9
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = None
-        self.trainer = None
+        self.model = Linear_QNet(11, 256, 3)
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def getState(self, game):
-        head = game.getHead()
-        pL = (head[0] - game.BLOCK_SIZE, head[1])
-        pR = (head[0] + game.BLOCK_SIZE, head[1])
-        pU = (head[0], head[1] - game.BLOCK_SIZE)
-        pD = (head[0], head[1] + game.BLOCK_SIZE)
+        head = game.snake.getHead()
+        point_l = (head[0] - game.getBlockSize(), head[1])
+        point_r = (head[0] + game.getBlockSize(), head[1])
+        point_u = (head[0], head[1] - game.getBlockSize())
+        point_d = (head[0], head[1] + game.getBlockSize())
 
-        dirL = game.direction == Direction.LEFT
-        dirR = game.direction == Direction.RIGHT
-        dirU = game.direction == Direction.UP
-        dirD = game.direction == Direction.DOWN
+        dir_l = game.snake.getDir() == Direction.LEFT
+        dir_r = game.snake.getDir() == Direction.RIGHT
+        dir_u = game.snake.getDir() == Direction.UP
+        dir_d = game.snake.getDir() == Direction.DOWN
 
-        dangerS = (dirL and game.isCollision(pL) or 
-                   dirR and game.isCollision(pR) or
-                   dirU and game.isCollision(pU) or
-                   dirD and game.isCollision(pD))
-        dangerL = (dirL and game.isCollision(pD) or 
-                   dirR and game.isCollision(pU) or
-                   dirU and game.isCollision(pL) or
-                   dirD and game.isCollision(pR))
-        dangerR = (dirL and game.isCollision(pU) or 
-                   dirR and game.isCollision(pD) or
-                   dirU and game.isCollision(pR) or
-                   dirD and game.isCollision(pL))
+        dangerS = (dir_r and game.isCollision(point_r)) or (dir_l and game.isCollision(point_l)) or (dir_u and game.isCollision(point_u)) or (dir_d and game.isCollision(point_d))
+        dangerL = (dir_d and game.isCollision(point_r)) or (dir_u and game.isCollision(point_l)) or (dir_r and game.isCollision(point_u)) or (dir_l and game.isCollision(point_d))
+        dangerR = (dir_u and game.isCollision(point_r)) or (dir_d and game.isCollision(point_l)) or (dir_l and game.isCollision(point_u)) or (dir_r and game.isCollision(point_d))
         
-        foodL = game.food[0] < game.head[0]
-        foodR = game.food[0] > game.head[0]
-        foodU = game.food[1] < game.head[0]
-        foodD = game.food[1] > game.head[0]
+        foodL = game.food[0] < game.snake.getHead()[0]
+        foodR = game.food[0] > game.snake.getHead()[0]
+        foodU = game.food[1] < game.snake.getHead()[1]
+        foodD = game.food[1] > game.snake.getHead()[1]
 
         state = [
             dangerS, dangerR, dangerL,
-            dirL, dirR, dirU, dirD,
+            dir_l, dir_r, dir_u, dir_d,
             foodL, foodR, foodU, foodD
         ]
 
@@ -65,21 +58,21 @@ class Agent:
         else:
             miniSample = self.memory
         
-        states, actions, rewards, next_states, dones = zip(*miniSample)
-        self.trainer.trainStep(states, actions, rewards, next_states, dones)
+        for state, action, reward, next_state, done in miniSample:
+            self.trainer.trainStep(state, action, reward, next_state, done)
 
     def trainShortMemory(self, state, action, reward, next_state, done):
         self.trainer.trainStep(state, action, reward, next_state, done)
 
     def getAction(self, state):
-        self.epsilon = 80 - self.number_games
+        self.epsilon = 150 - self.number_games
         final_move = [0,0,0]
         if random.randint(0, 200) < self.epsilon:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model.predict(state)
+            prediction = self.model(state0)
             move = torch.argmax(prediction).item()
             final_move[move] = 1
         
@@ -118,11 +111,15 @@ def train():
 
             if score > record:
                 record = score
-                # agent.model.save()
+                agent.model.save()
 
             print("Game", agent.number_games, "Score", score, "Record:", record)
 
-            #plot
+            plot_scores.append(score)
+            total_score += score
+            plot_mean_scores.append(total_score / agent.number_games)
+            plot(plot_scores, plot_mean_scores)
+            
 
 
 
